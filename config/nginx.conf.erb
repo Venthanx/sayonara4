@@ -1,17 +1,34 @@
-daemon off;
-worker_processes <%= ENV['NGINX_WORKERS'] || 4%>;
+# [[[ --- main模块: 全局配置 --- ]]]
+daemon off;							# 决定nginx是否应该成为守护进程 (主要用于开发)
+worker_processes <%= ENV['NGINX_WORKERS'] || 4%>;	# 定义工作进程数，运行时会监控每个进程消耗内存 number | auto
+# error_log	/var/log/nginx/error.log error;
+# error_log	logs/error.log	info;   # 定义错误日志文件的位置及输出级别 debug info notice warn error..
+# pid		logs/nginx.pid;         # 指定进程id存储文件的位置
+
+
+# [[[ --- event模块: 工作模式配置 --- ]]]
 events {
-  use epoll;
-  accept_mutex on;
-  worker_connections <%= ENV['NGINX_WORKER_CONNECTIONS'] || 1024 %>;
+	# user	people;			# 定义工作进程使用的用户以及用户组凭据 nobody
+	accept_mutex on;		# 开启时工作进程将轮流接受新连接
+	worker_connections <%= ENV['NGINX_WORKER_CONNECTIONS'] || 1024 %>; # 指定最大的可同时接收的连接数
 }
  
+
+# [[[ --- http模块: http协议信息配置 --- ]]]
 http {
-    include mime.types;
+    include mime.types;		# 引入文件并使用当中的代码
     default_type application/octet-stream;
     proxy_ssl_server_name on;
     sendfile on;
-    gzip on;
+    gzip on;				# 压缩响应过滤器，有助于缩小传输数据的大小
+	#tcp_nopush     on;
+    #keepalive_timeout  0;
+	#access_log  logs/access.log  main;
+	#log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+    #                  '$status $body_bytes_sent "$http_referer" '
+    #                  '"$http_user_agent" "$http_x_forwarded_for"';
+
+
 
     # Must read the body in 5 seconds.
     client_body_timeout <%= ENV['NGINX_CLIENT_BODY_TIMEOUT'] || 5 %>;
@@ -21,7 +38,7 @@ http {
 
     # server {
 
-    #     listen <%= ENV["PORT"] %>;	# 监听端口
+    #     listen <%= ENV["PORT"] %>;	
 
     #     port_in_redirect off;
     #     proxy_redirect https://<%=ENV['DOMAIN']%> http://$host;
@@ -40,25 +57,102 @@ http {
 
     # -------------------------------------
 
+# [[[ --- upstream模块: 负载均衡配置 --- ]]]
+	# upstream servername {
+	# 	server 172.31.17.2:9100;
+	# }
 
+
+# [[[ --- server模块: 服务器访问配置 --- ]]]
     server {
 
-        listen <%= ENV["PORT"] %>;
+        listen <%= ENV["PORT"] %>;		# 监听端口 80 443 ssl
 		server_name  *.heroku.com;		# 监听地址 127.0.0.1 localhost "" $hostname *.example.org ~^(?<user>.+)\.example\.com$
 
 		if ($http_x_forwarded_proto != "https") {
 			rewrite ^(.*)$ https://$host$1 permanent;
 		}
 
+
+# [[[ --- location模块: 访问路由配置 --- ]]]
+			# /upload
+
+
+
+
         location / {
 
-            # root   ../www;
             root /;
             # index  index.html index.htm;
             autoindex   on;     # 打开文件浏览服务器
+
+			
+			
+		# [[[ Proxy Settings 代理设置 ]]]
+			# proxy_pass  https://www.qq.com;	# 设置代理服务器的协议/域名/IP/映射URI
+						# http://127.0.0.1:8000/uri/;
+						# http://servername;	# 解析多个地址时，可将地址指定为服务器组，并以轮询方式使用
+						# 
+
+			# proxy_redirect     off;
+			# proxy_set_header   Host             $host;
+			# proxy_set_header   X-Real-IP        $remote_addr;
+			# proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+			# proxy_ignore_headers Set-Cookie;	# 禁用处理某些来自代理服务器的响应头字段
+			# proxy_next_upstream error;		# 指定应将请求传递到下一个服务器的条件
+			# proxy_max_temp_file_size 	0;
+			# proxy_intercept_errors 	on;		# 状态码 >/=300 时 代理响应传递给客户端/拦截并重定向处理
+			# proxy_connect_timeout		60;		# 定义与代理服务器建立连接的超时时间 最大75s
+			# proxy_cookie_path /path1/ /;		# 设置代理服务器响应的 Set-Cookie 头字段的 path 属性
+			# proxy_http_version 		1.1;	# 设置代理的 HTTP 协议版本
+			# proxy_send_timeout		90;
+			# proxy_read_timeout		90;
+			# proxy_buffer_size			4k;		# 用于读取从代理服务器收到的第一部分响应的缓冲区大小
+			# proxy_buffers				4 32k; 	# 设置单个连接从代理服务器读取响应的缓冲区的 数量和大小
+			# proxy_busy_buffers_size	64k;	# 当启用代理服务器响应缓冲时，限制缓冲区的总大小
+			# proxy_temp_file_write_size 64k;			
         }
 
         include location.conf;	# 引入路由路径配置
 
     }
 }
+
+
+
+
+# [反向代理]: 主要用于服务器集群分布式部署的情况下，反向代理隐藏了服务器的信息
+# 1. 多个客户端给服务器发送的请求，nginx服务器接收到之后，按照一定的规则分发给了后端的业务处理服务器进行处理了。
+# 2. 此时，请求的来源（客户端）是明确的，但请求具体是由哪台服务器处理的并不明确，nginx扮演的就是一个反向代理角色
+
+# ---------------------------------------------------------
+
+# https://blog.csdn.net/Laravelchen/article/details/118379014
+
+# 代理目标：http://127.0.0.1/upload/pdf/m.pdf
+
+
+
+#   listen       80;
+
+# 	location  /upload {
+# 		proxy_pass http://127.0.0.1:8080/;	# => http://127.0.0.1:8080/m.pdf
+# 		proxy_pass http://127.0.0.1:8080;	# => http://127.0.0.1:8080/pdf/m.pdf
+# 	}
+# 
+# 	location  /upload/ {
+# 		proxy_pass http://127.0.0.1:8080/;			# =>	http://127.0.0.1:8080/m.pdf
+# 		proxy_pass http://127.0.0.1:8080;       √	# =>	http://127.0.0.1:8080/upload/pdf/m.pdf 
+# 		proxy_pass http://127.0.0.1:8080/static/;	# =>	http://127.0.0.1:8080/static/m.pdf
+# 		proxy_pass http://127.0.0.1:8080/static;	# =>	http://127.0.0.1:8080/staticpdf/m.pdf
+# 	}
+
+
+
+# ---------------------------------------------------------
+
+# https://blog.csdn.net/willingtolove/article/details/108500198
+
+# ---------------------------------------------------------
+
+# https://lihefei.blog.csdn.net/article/details/121033283
