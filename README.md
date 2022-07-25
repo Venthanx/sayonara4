@@ -85,3 +85,21 @@ Don't forget to give the project a star! Thanks again!
 [MIT](https://choosealicense.com/licenses/mit/)
 
 <p align="right">(<a href="#top">back to top</a>)</p>
+
+## License
+```
+git add .
+git commit -m "make it better"
+git push -u origin main
+
+```
+
+```
+git add * 
+git commit -m "make it better" 
+git push heroku main 
+heroku ps:scale web=1
+heroku open
+
+```
+

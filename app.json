@@ -1,11 +1,11 @@
 {
-    "name": "Roxy",
+    "name": "sayonara4",
     "description": "Deploy Self-Hosted Proxy to unblock websites through Heroku in one click ",
-    "repository": "https://github.com/CoolFool/Roxy",
+    "repository": "https://github.com/Venthanx/sayonara4",
     "env":{
       "DOMAIN":{
         "description" : "The domain to proxy through heroku (only HOSTNAME e.g. example.com)",
-        "required":true
+        "required":false
       },
       "KEEP_DYNO_ALIVE":{
         "description" : "Should Roxy keep heroku free dyno alive (change value to 'true' if required)",
