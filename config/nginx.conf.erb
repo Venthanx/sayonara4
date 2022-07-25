@@ -21,7 +21,7 @@ http {
 
     # server {
 
-    #     listen <%= ENV["PORT"] %>;
+    #     listen <%= ENV["PORT"] %>;	# 监听端口
 
     #     port_in_redirect off;
     #     proxy_redirect https://<%=ENV['DOMAIN']%> http://$host;
@@ -44,18 +44,19 @@ http {
     server {
 
         listen <%= ENV["PORT"] %>;
+		server_name  *.heroku.com;		# 监听地址 127.0.0.1 localhost "" $hostname *.example.org ~^(?<user>.+)\.example\.com$
+
+		if ($http_x_forwarded_proto != "https") {
+			rewrite ^(.*)$ https://$host$1 permanent;
+		}
 
         location / {
 
             # root   ../www;
             root /;
             # index  index.html index.htm;
-            # autoindex   on;     # 打开文件浏览服务器
+            autoindex   on;     # 打开文件浏览服务器
         }
-
-        if ($http_x_forwarded_proto != "https") {
-			rewrite ^(.*)$ https://$host$1 permanent;
-		}
 
         include location.conf;	# 引入路由路径配置
 
