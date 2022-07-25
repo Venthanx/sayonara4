@@ -47,8 +47,10 @@ http {
 
         location / {
             # root   /usr/share/nginx/html;
-            root   ../www;
-            index  index.html index.htm;
+            # root   ../www;
+            root /
+            # index  index.html index.htm;
+            autoindex   on;
         }
 
         if ($http_x_forwarded_proto != "https") {
