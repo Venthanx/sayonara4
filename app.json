@@ -1,8 +1,28 @@
 {
-  "name": "heroku-docker-nginx-example",
-  "description": "A barebones nginx installation using Docker",
-  "repository": "https://github.com/rjoonas/heroku-docker-nginx-example",
-  "logo": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Nginx_logo.svg",
-  "keywords": ["nginx", "docker", "proxy"],
-  "stack": "container"
-}
+    "name": "Roxy",
+    "description": "Deploy Self-Hosted Proxy to unblock websites through Heroku in one click ",
+    "repository": "https://github.com/CoolFool/Roxy",
+    "env":{
+      "DOMAIN":{
+        "description" : "The domain to proxy through heroku (only HOSTNAME e.g. example.com)",
+        "required":true
+      },
+      "KEEP_DYNO_ALIVE":{
+        "description" : "Should Roxy keep heroku free dyno alive (change value to 'true' if required)",
+        "value":"false",
+        "required":false
+      },
+      "HEROKU_APP_URL":{
+        "description" : "Full Heroku App URL (required if KEEP_DYNO_ALIVE is true)",
+        "required":false
+      }
+    },
+    "buildpacks": [
+        {   
+            "url": "heroku/python"  
+        },
+        {
+          "url": "https://github.com/CoolFool/heroku-buildpack-nginx.git"
+        }
+      ]
+  }
