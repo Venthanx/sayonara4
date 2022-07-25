@@ -43,19 +43,22 @@ http {
 
     server {
 
-        listen <%= ENV["PORT"] %>;
+        # listen <%= ENV["PORT"] %>;
+        listen 8866;
 
         location / {
-            # root   /usr/share/nginx/html;
+
             # root   ../www;
             root /;
             # index  index.html index.htm;
-            autoindex   on;
+            autoindex   on;     # 打开文件浏览服务器
         }
 
         if ($http_x_forwarded_proto != "https") {
 			rewrite ^(.*)$ https://$host$1 permanent;
 		}
+
+        # include location.conf;	# 引入路由路径配置
 
     }
 }
