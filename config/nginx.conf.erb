@@ -21,12 +21,19 @@ http {
     proxy_ssl_server_name on;
     sendfile on;
     gzip on;				# 压缩响应过滤器，有助于缩小传输数据的大小
-	#tcp_nopush     on;
-    #keepalive_timeout  0;
-	#access_log  logs/access.log  main;
-	#log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-    #                  '$status $body_bytes_sent "$http_referer" '
-    #                  '"$http_user_agent" "$http_x_forwarded_for"';
+	# gzip_min_length 1k;
+	# gzip_comp_level 9;
+	# gzip_types text/plain application/javascript application/x-javascript text/css application/xml text/javascript application/x-httpd-php image/jpeg image/gif image/png;
+	# gzip_vary on;
+	# gzip_disable "MSIE [1-6]\.";
+	# tcp_nopush     on;
+    # keepalive_timeout  0;
+	# access_log  logs/access.log  main;
+	# log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+    #                  	'$status $body_bytes_sent "$http_referer" '
+    #                  	'"$http_user_agent" "$http_x_forwarded_for"';
+    # error_page 403 https://www.404.com;   #错误页
+
 
 
 
@@ -34,44 +41,44 @@ http {
     client_body_timeout <%= ENV['NGINX_CLIENT_BODY_TIMEOUT'] || 5 %>;
 
 
-    # -------------------------------------
-
-    # server {
-
-    #     listen <%= ENV["PORT"] %>;	
-
-    #     port_in_redirect off;
-    #     proxy_redirect https://<%=ENV['DOMAIN']%> http://$host;
-    #     proxy_redirect http://<%=ENV['DOMAIN']%> http://$host;
-
-    #     location / {
-    #         proxy_set_header    Host <%=ENV['DOMAIN']%>;
-    #         proxy_set_header    Referer 'https://<%=ENV['DOMAIN']%>';
-    #         proxy_set_header    Accept-Encoding "";
-    #         proxy_set_header    CF-Connecting-IP "";
-    #         proxy_pass https://<%=ENV['DOMAIN']%>;
-    #         sub_filter <%=ENV['DOMAIN']%> $host;
-    #         sub_filter_once off;
-    #     }
-    # }
-
-    # -------------------------------------
+# ---------------------------------------------------
 
 # [[[ --- upstream模块: 负载均衡配置 --- ]]]
+
+
 	# upstream servername {
+	# 	ip_hash;     
 	# 	server 172.31.17.2:9100;
+	# 	server 192.168.10.121:3333 backup;  #热备
+	
 	# }
 
 
 # [[[ --- server模块: 服务器访问配置 --- ]]]
     server {
 
-        listen <%= ENV["PORT"] %>;		# 监听端口 80 443 ssl
+        listen <%= ENV["PORT"] %>;		# 监听端口 "$PORT" 80 443 ssl http2
 		server_name  *.heroku.com;		# 监听地址 127.0.0.1 localhost "" $hostname *.example.org ~^(?<user>.+)\.example\.com$
+										# server_name  127.0.0.2  alias  another.alias;	
+
+
+		# access_log  	logs/host.access.log  main;
+		# charset 		'utf-8';    	#防止中文乱码
+
+		# ssl_certificate      cert.pem;
+		# ssl_certificate_key  cert.key;
+		# ssl_session_cache    shared:SSL:1m;
+		# ssl_session_timeout  5m;
+		# ssl_ciphers  HIGH:!aNULL:!MD5;
+		# ssl_prefer_server_ciphers  on;
+
+		# resolver 114.114.114.114;		# 配置DNS解析IP地址, 如 Google Public DNS
+		# resolver_timeout 5s;			# 解析超时时间
 
 		if ($http_x_forwarded_proto != "https") {
 			rewrite ^(.*)$ https://$host$1 permanent;
 		}
+
 
 
 # [[[ --- location模块: 访问路由配置 --- ]]]
@@ -82,9 +89,11 @@ http {
 
         location / {
 
-            root /;
-            # index  index.html index.htm;
+            root /;				# 根目录设置
+            # index  index.html index.htm;	# 默认页设置
             autoindex   on;     # 打开文件浏览服务器
+            #proxy_pass  https://mysvr;  #请求转向 mysvr 定义的服务器列表
+
 
 			
 			
@@ -92,7 +101,7 @@ http {
 			# proxy_pass  https://www.qq.com;	# 设置代理服务器的协议/域名/IP/映射URI
 						# http://127.0.0.1:8000/uri/;
 						# http://servername;	# 解析多个地址时，可将地址指定为服务器组，并以轮询方式使用
-						# 
+						# http://$host$request_uri;
 
 			# proxy_redirect     off;
 			# proxy_set_header   Host             $proxy_host;
@@ -100,7 +109,7 @@ http {
 			# proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
 			# proxy_ignore_headers Set-Cookie;	# 禁用处理某些来自代理服务器的响应头字段
 			# proxy_next_upstream error;		# 指定应将请求传递到下一个服务器的条件
-			# proxy_max_temp_file_size 	0;
+			# proxy_max_temp_file_size 	0;		# 关闭磁盘缓存读写，减少I/O
 			# proxy_intercept_errors 	on;		# 状态码 >/=300 时 代理响应传递给客户端/拦截并重定向处理
 			# proxy_connect_timeout		60;		# 定义与代理服务器建立连接的超时时间 最大75s
 			# proxy_cookie_path /path1/ /;		# 设置代理服务器响应的 Set-Cookie 头字段的 path 属性
@@ -110,16 +119,31 @@ http {
 			# proxy_buffer_size			4k;		# 用于读取从代理服务器收到的第一部分响应的缓冲区大小
 			# proxy_buffers				4 32k; 	# 设置单个连接从代理服务器读取响应的缓冲区的 数量和大小
 			# proxy_busy_buffers_size	64k;	# 当启用代理服务器响应缓冲时，限制缓冲区的总大小
-			# proxy_temp_file_write_size 64k;			
+			# proxy_temp_file_write_size 64k;
+
+			# 配置代理服务器HTTP状态缓存时间
+			# proxy_cache_valid 200 302 10m;
+			# proxy_cache_valid 301 1h;
+			# proxy_cache_valid any 1m;			
         }
 
         include location.conf;	# 引入路由路径配置
+
+        # error_page	404	/404.html;
+		# error_page	500 502 503 504  /50x.html;
+        # location = /50x.html {
+        #     root   html;
+        # }
+
 
     }
 }
 
 
-
+# [正向代理]:正向代理的特点是客户端非常明确要访问的服务器地址；
+# 1. 服务器只清楚请求来自哪个代理服务器，而不清楚来自哪个具体的客户端；
+# 2. 正向代理模式屏蔽或者隐藏了真实客户端信息。
+# 3. 将请求发送给代理服务器，代理服务器去访问国外的网站，然后将访问到的数据传递给我们！
 
 # [反向代理]: 主要用于服务器集群分布式部署的情况下，反向代理隐藏了服务器的信息
 # 1. 多个客户端给服务器发送的请求，nginx服务器接收到之后，按照一定的规则分发给了后端的业务处理服务器进行处理了。
@@ -156,3 +180,7 @@ http {
 # ---------------------------------------------------------
 
 # https://lihefei.blog.csdn.net/article/details/121033283
+
+
+
+# 正则匹配，~为区分大小写，~*为不区分大小写。（~*^.+$）
